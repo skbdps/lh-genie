@@ -1,0 +1,83 @@
+# Claude Chatbot POC Configuration
+
+llm:
+  model: "gemini-3-flash-preview"
+  max_tokens: 65536
+  endpoint_name: "gemini-lakehouse"
+
+# Context Management
+context:
+  max_tokens: 65536
+  token_estimation_ratio: 4  # chars per token (rough estimate)
+
+# File Upload Settings
+files:
+  max_size_mb: 50
+  allowed_extensions:
+    - pdf
+    - txt
+    - md
+    - py
+    - js
+    - json
+    - csv
+    - png
+    - jpg
+    - jpeg
+    - webp
+    # Data files (processed via code in sandbox)
+    - xlsx
+    - xls
+    - tsv
+    - parquet
+    - xml
+    - sql
+    - yaml
+    - yml
+    - html
+    - css
+    - sh
+
+# UI Settings
+ui:
+  page_title: "Claude Chatbot POC"
+  page_icon: "🤖"
+  show_thinking_by_default: false
+  auto_title_generation: false
+
+# Cost Tracking
+costs:
+  input_cost_per_million: 3.00
+  output_cost_per_million: 15.00
+  show_cost_estimate: true
+
+# Database
+database:
+  path: "data/chats.db"
+
+# Storage
+storage:
+  uploads_dir: "data/uploads"
+
+# Trino Lakehouse (via MCP server)
+trino:
+  enabled: true
+  mcp_url: "http://localhost:8000"       # MCP server SSE endpoint
+  default_user: "test@hdfcbank.com"      # Hardcoded for dev; replaced by auth later
+
+# Code Execution (Docker/Podman)
+code_execution:
+  enabled: true
+  max_iterations: 30
+  timeout_seconds: 120
+  
+  docker:
+    image: "chatbot-sandbox:latest"
+    memory_limit: "2048m"
+    cpu_limit: 0.5
+    workspace_base: null  # null = use temp directory
+  
+  ui:
+    show_thinking: true
+    show_code_attempts: true
+    show_execution_details: true
