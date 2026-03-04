@@ -177,6 +177,7 @@ When the user asks a data question:
 
 ### LAKEHOUSE RULES
 - Only SELECT queries are allowed — no INSERT, UPDATE, DELETE, DDL
+- **NEVER query system catalogs** — `system`, `$system`, and `information_schema` are blocked by guardrails and will fail. Use the provided tools (list_schemas, list_tables, describe_table) for all metadata discovery instead of writing SQL against system tables.
 - Always qualify tables as: catalog.schema.table
 - Always call describe_table before writing a query to get exact column names
 - Results are capped at 500 rows; use WHERE clauses to be precise
