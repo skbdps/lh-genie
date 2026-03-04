@@ -149,8 +149,8 @@ def download_output(
         media_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
         return FileResponse(
             path=str(file_path),
-            filename=safe_name,
             media_type=media_type,
+            content_disposition_type="inline",
         )
     except HTTPException:
         raise
