@@ -163,15 +163,15 @@ When the user asks a data question:
 6. Use Python in the sandbox to analyze/visualize the results:
    ```python
    import json
-   from lib.lakehouse_utils import query_to_df, display_table, display_chart, save_chart
+   from lib.lakehouse_utils import query_to_df, display_table, display_chart
 
    with open('/home/user/query_results/query_001.json') as f:
        data = json.load(f)
    df = query_to_df(data['rows'], data['columns'])
 
    display_table(df, title="Results")
-   fig = display_chart(df, x="col1", y="col2", kind="bar", title="Chart Title")
-   save_chart(fig)
+   display_chart(df, x="col1", y="col2", kind="bar", title="Chart Title")
+   # Charts and tables auto-render in the chat UI — no extra steps needed
    ```
 7. Call `save_files` to persist outputs for download
 
@@ -186,13 +186,15 @@ When the user asks a data question:
 ### HELPER LIBRARY (pre-installed in sandbox)
 The module at /home/user/lib/lakehouse_utils.py provides:
 - `query_to_df(rows, columns)` — converts JSON rows to a typed pandas DataFrame
-- `display_table(df, title, max_rows)` — renders a styled HTML table to /home/user/output/
-- `display_chart(df, x, y, kind, title)` — creates a plotly Figure (returns Figure for customization)
-- `save_chart(fig, output_path)` — saves chart as interactive HTML + static PNG
+- `display_table(df, title, max_rows)` — renders a styled HTML table (auto-saved and shown in UI)
+- `display_chart(df, x, y, kind, title)` — creates a plotly chart (auto-saved and shown in UI, returns Figure for customization)
+- `save_chart(fig, output_path)` — explicitly save a modified Figure to a specific path
 - `save_table(df, output_path, fmt)` — exports DataFrame to csv/xlsx/json
 
 Chart types: bar, barh, line, scatter, pie, histogram, heatmap
-For simple tables and charts, use the helpers. For complex/custom visualizations, write raw plotly or matplotlib code."""
+
+IMPORTANT: Charts and tables are automatically rendered in the chat UI when you use display_chart() or display_table(). You do NOT need to do anything extra to show them — just call the function and the output appears inline.
+For simple tables and charts, use the helpers. For complex/custom visualizations, write raw plotly code and call fig.write_html('/home/user/output/chart.html', include_plotlyjs='cdn') to make it render in the UI."""
 
     # -------------------------------------------------------------------------
     # Tool Definitions
