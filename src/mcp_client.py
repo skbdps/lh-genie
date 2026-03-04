@@ -63,7 +63,12 @@ class MCPTrinoClient:
 
         loop = self._get_loop()
         try:
-            return loop.run_until_complete(_run())
+            result = loop.run_until_complete(_run())
+            # Debug: log actual return type to help diagnose parsing issues
+            print(f"[MCP-CLIENT] Raw result type: {type(result).__name__}, "
+                  f"has .content: {hasattr(result, 'content')}, "
+                  f"has .isError: {hasattr(result, 'isError')}")
+            return result
         except Exception as e:
             raise ConnectionError(f"MCP call '{tool_name}' failed: {e}") from e
 
@@ -71,31 +76,75 @@ class MCPTrinoClient:
         """
         Extract a dict from the MCP tool response.
 
-        FastMCP returns a list of content blocks. For our tools, the first
-        block is a text block containing JSON.
+        FastMCP Client.call_tool() can return:
+          - A CallToolResult object with .content (list) and .isError (bool)
+          - A list of content objects (TextContent, etc.)
+          - A dict (unlikely but defensive)
+          - None
+
+        Our MCP tools always return JSON-serialized dicts in a TextContent block.
+        Guardrail errors also come as JSON with an "error" key.
         """
         import json
 
         if raw_result is None:
             return {"error": "Empty response from MCP server"}
 
-        # FastMCP returns list of content objects
-        if isinstance(raw_result, list):
-            for item in raw_result:
-                # Each item has .type and .text attributes (TextContent)
-                text = getattr(item, "text", None)
-                if text:
-                    try:
-                        return json.loads(text)
-                    except (json.JSONDecodeError, TypeError):
-                        return {"raw": text}
-            return {"error": "No text content in MCP response"}
+        # ── Unwrap CallToolResult or similar wrapper objects ───────────
+        # FastMCP 2.x returns a CallToolResult with .content and .isError
+        is_error = getattr(raw_result, "isError", False) or getattr(raw_result, "is_error", False)
+        content = getattr(raw_result, "content", None)
 
-        # If it's already a dict (shouldn't happen, but defensive)
-        if isinstance(raw_result, dict):
+        if content is not None:
+            # Unwrap: use the content list for parsing
+            items = content
+        elif isinstance(raw_result, list):
+            items = raw_result
+        elif isinstance(raw_result, dict):
             return raw_result
+        elif isinstance(raw_result, str):
+            # Rare: raw string response
+            try:
+                return json.loads(raw_result)
+            except (json.JSONDecodeError, TypeError):
+                return {"error": raw_result} if is_error else {"raw": raw_result}
+        else:
+            # Unknown type — try str conversion as last resort
+            text = str(raw_result)
+            print(f"[MCP-CLIENT] WARNING: Unexpected result type {type(raw_result).__name__}: {text[:200]}")
+            try:
+                return json.loads(text)
+            except (json.JSONDecodeError, TypeError):
+                return {"error": text} if is_error else {"raw": text}
 
-        return {"raw": str(raw_result)}
+        # ── Parse content blocks ──────────────────────────────────────
+        if not items:
+            return {"error": "Empty content in MCP response"}
+
+        for item in items:
+            text = getattr(item, "text", None)
+            if not text:
+                continue
+
+            # Try JSON parse (happy path — all our tools return JSON dicts)
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, dict):
+                    # If MCP flagged isError but dict lacks "error" key, inject it
+                    if is_error and "error" not in parsed:
+                        parsed["error"] = text
+                    return parsed
+                # Non-dict JSON (e.g. a list) — wrap it
+                return {"data": parsed, "error": text} if is_error else {"data": parsed}
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+            # Non-JSON text — return as error or raw
+            if is_error:
+                return {"error": text, "validation_error": True}
+            return {"raw": text}
+
+        return {"error": "No text content in MCP response"}
 
     # ------------------------------------------------------------------
     # Public API — one method per MCP tool
