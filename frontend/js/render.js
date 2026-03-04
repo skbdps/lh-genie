@@ -85,7 +85,8 @@ const Render = {
     },
 
     /**
-     * Render an inline HTML output (chart or table) inside an iframe.
+     * Render an inline HTML output (chart or table) in an iframe.
+     * Uses a URL to load from the server — avoids SSE payload issues.
      */
     createHtmlOutput(data) {
         const container = document.createElement('div');
@@ -102,10 +103,17 @@ const Render = {
 
         const iframe = document.createElement('iframe');
         iframe.style.height = height + 'px';
-        iframe.sandbox = 'allow-scripts allow-same-origin';
-        iframe.srcdoc = data.html;
-        container.appendChild(iframe);
 
+        if (data.url) {
+            // Load from server endpoint (preferred — no SSE size limits)
+            iframe.src = data.url;
+        } else if (data.html) {
+            // Fallback: inline HTML via srcdoc
+            iframe.sandbox = 'allow-scripts allow-same-origin';
+            iframe.srcdoc = data.html;
+        }
+
+        container.appendChild(iframe);
         return container;
     },
 
