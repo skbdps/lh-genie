@@ -63,7 +63,7 @@ storage:
 trino:
   enabled: true
   mcp_url: "http://localhost:8000"       # MCP server SSE endpoint
-  default_user: "None"      # Hardcoded for dev; replaced by auth later
+  default_user: null      # Hardcoded for dev; replaced by auth later
 
 # Code Execution (Docker/Podman)
 code_execution:
