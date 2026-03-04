@@ -21,7 +21,7 @@ def list_chats(db=Depends(deps.get_db)):
             id=c.id,
             title=c.title,
             created_at=c.created_at,
-            updated_at=c.updated_at,
+            last_updated=c.last_updated,
         )
         for c in chats
     ]
@@ -35,7 +35,7 @@ def create_chat(body: CreateChatRequest = None, db=Depends(deps.get_db)):
         id=chat.id,
         title=chat.title,
         created_at=chat.created_at,
-        updated_at=chat.updated_at,
+        last_updated=chat.last_updated,
     )
 
 
@@ -52,7 +52,7 @@ def get_chat(chat_id: str, db=Depends(deps.get_db)):
         id=chat.id,
         title=chat.title,
         created_at=chat.created_at,
-        updated_at=chat.updated_at,
+        last_updated=chat.last_updated,
         sandbox_id=chat.sandbox_id,
         messages=[
             MessageOut(
@@ -60,7 +60,7 @@ def get_chat(chat_id: str, db=Depends(deps.get_db)):
                 role=m.role,
                 content=m.content,
                 token_count=m.token_count,
-                created_at=m.created_at,
+                created_at=m.timestamp,
             )
             for m in messages
         ],
@@ -71,7 +71,7 @@ def get_chat(chat_id: str, db=Depends(deps.get_db)):
                 file_type=f.file_type,
                 size_bytes=f.size_bytes,
                 in_context=f.in_context,
-                created_at=f.created_at,
+                created_at=f.uploaded_at,
             )
             for f in files
         ],
@@ -89,7 +89,7 @@ def rename_chat(chat_id: str, body: RenameChatRequest, db=Depends(deps.get_db)):
         id=chat.id,
         title=chat.title,
         created_at=chat.created_at,
-        updated_at=chat.updated_at,
+        last_updated=chat.last_updated,
     )
 
 
