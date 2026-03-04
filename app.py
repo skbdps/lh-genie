@@ -543,6 +543,64 @@ def render_messages():
                     st.markdown(content)
 
 
+def _render_sandbox_html_outputs(output_text: str = None):
+    """
+    Render HTML outputs (charts, tables) from the sandbox inline in the UI.
+    
+    Parses [OUTPUT_HTML:/path] markers from stdout to find which files to render,
+    then reads them from the host workspace (bind mount) and renders with
+    st.components.v1.html().
+    """
+    import re
+    import streamlit.components.v1 as components
+    from pathlib import Path
+
+    chat_id = st.session_state.get('current_chat_id')
+    executor = st.session_state.get('code_executor')
+    if not chat_id or not executor:
+        return
+
+    try:
+        workspace = executor.get_workspace(chat_id)
+    except Exception:
+        return
+
+    # Collect HTML file paths from markers in stdout
+    html_paths = []
+    if output_text:
+        markers = re.findall(r'\[OUTPUT_HTML:(/home/user/[^\]]+\.html)\]', output_text)
+        for container_path in markers:
+            # Map container path → host workspace path
+            # /home/user/output/chart.html → workspace/output/chart.html
+            relative = container_path.replace("/home/user/", "", 1)
+            host_path = workspace / relative
+            if host_path.exists():
+                html_paths.append(host_path)
+
+    # Fallback: if no markers found, scan output/ dir for recent HTML files
+    if not html_paths:
+        output_dir = workspace / "output"
+        if output_dir.exists():
+            html_paths = sorted(output_dir.glob("*.html"), key=lambda f: f.stat().st_mtime)
+
+    # Render each HTML file inline
+    for html_file in html_paths:
+        try:
+            html_content = html_file.read_text(encoding="utf-8")
+            if not html_content.strip():
+                continue
+
+            is_chart = "plotly" in html_content.lower()
+            is_table = "lh-table" in html_content.lower()
+            height = 500 if is_chart else 400 if is_table else 350
+
+            label = "📊" if is_chart else "📋" if is_table else "📄"
+            st.caption(f"{label} {html_file.name}")
+            components.html(html_content, height=height, scrolling=True)
+        except Exception as e:
+            st.warning(f"Could not render {html_file.name}: {e}")
+
+
 def _render_tool_result_display(tool_name, tool_input, result, iteration):
     """Render a persisted tool result display block."""
     if tool_name == 'create_file':
@@ -594,6 +652,9 @@ def _render_tool_result_display(tool_name, tool_input, result, iteration):
                     code_block_with_copy(output, language='text', label="💾 Output:")
                 else:
                     st.text(output)
+                
+                # ── Render HTML outputs (charts, tables) from sandbox ──
+                _render_sandbox_html_outputs(output_text=result.get('output', ''))
             else:
                 st.error("❌ Error")
                 error = result.get('error', 'Unknown error')
