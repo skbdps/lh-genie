@@ -296,6 +296,8 @@ def _emit_html_outputs(
     After execute_python, check for HTML outputs and emit them as SSE events.
     Parses [OUTPUT_HTML:path] markers from stdout, falls back to scanning output/.
     Uses emitted_files set to avoid sending the same file twice.
+
+    Sends a URL reference (not the full HTML) — the frontend loads it in an iframe.
     """
     try:
         workspace = executor.get_workspace(chat_id)
@@ -312,7 +314,7 @@ def _emit_html_outputs(
         if host_path.exists():
             html_paths.append(host_path)
 
-    # Fallback: scan output/ directory
+    # Fallback: scan output/ directory for any .html files
     if not html_paths:
         output_dir = workspace / "output"
         if output_dir.exists():
@@ -324,18 +326,24 @@ def _emit_html_outputs(
             continue
 
         try:
-            html_content = html_file.read_text(encoding="utf-8")
-            if not html_content.strip():
+            # Quick check: file has content
+            if html_file.stat().st_size == 0:
                 continue
 
-            kind = "chart" if "plotly" in html_content.lower() else \
-                   "table" if "lh-table" in html_content.lower() else "html"
+            # Detect kind from filename or content peek
+            peek = html_file.read_text(encoding="utf-8", errors="ignore")[:500].lower()
+            kind = "chart" if "plotly" in peek else \
+                   "table" if "lh-table" in peek else "html"
+
+            # Build the URL the frontend will use to load this file
+            url = f"/api/chats/{chat_id}/outputs/{html_file.name}"
 
             _put(queue, loop, SSEEvent("html_output", {
                 "path": html_file.name,
-                "html": html_content,
+                "url": url,
                 "kind": kind,
             }))
             emitted_files.add(html_file.name)
+            print(f"[ORCHESTRATOR] Emitted html_output: {html_file.name} ({kind})")
         except Exception as e:
             print(f"[ORCHESTRATOR] Failed to read {html_file}: {e}")
