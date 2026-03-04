@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LH Genie</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <aside id="sidebar">
+            <div id="sidebar-header">
+                <h1>LH Genie</h1>
+                <button id="new-chat-btn">+ New Chat</button>
+            </div>
+            <div id="chat-list"></div>
+        </aside>
+
+        <main id="main">
+            <header id="chat-header">
+                <h2 id="chat-title">Select or create a chat</h2>
+                <div id="status-indicator"></div>
+            </header>
+
+            <div id="messages"></div>
+
+            <footer id="input-area">
+                <div id="file-pills"></div>
+                <div id="input-row">
+                    <textarea id="user-input" placeholder="Ask about your data..." rows="1"></textarea>
+                    <button id="send-btn" disabled>Send</button>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/stream.js"></script>
+    <script src="/js/render.js"></script>
+    <script src="/js/sidebar.js"></script>
+    <script src="/js/chat.js"></script>
+    <script src="/js/files.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>
