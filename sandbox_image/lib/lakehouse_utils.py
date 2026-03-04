@@ -54,6 +54,22 @@ def _ensure_output_dir(path: str) -> str:
     return path
 
 
+def _auto_rename(path: str) -> str:
+    """
+    If ``path`` already exists, return a collision-free variant like
+    ``chart(1).html``, ``chart(2).html``, etc.  Otherwise return as-is.
+    """
+    if not os.path.exists(path):
+        return path
+    base, ext = os.path.splitext(path)
+    n = 1
+    while True:
+        candidate = f"{base}({n}){ext}"
+        if not os.path.exists(candidate):
+            return candidate
+        n += 1
+
+
 # ---------------------------------------------------------------------------
 # query_to_df — Convert JSON rows from run_query into a typed DataFrame
 # ---------------------------------------------------------------------------
@@ -169,6 +185,7 @@ def display_table(
     if output_path is None:
         output_path = f"{_OUTPUT_DIR}/table.html"
     _ensure_output_dir(output_path)
+    output_path = _auto_rename(output_path)
 
     total_rows = len(df)
     show_df = df.head(max_rows)
@@ -324,6 +341,7 @@ def save_chart(
     if output_path is None:
         output_path = f"{_OUTPUT_DIR}/chart.html"
     _ensure_output_dir(output_path)
+    output_path = _auto_rename(output_path)
 
     # Write interactive HTML (CDN keeps file small)
     fig.write_html(output_path, include_plotlyjs="cdn")
