@@ -1,0 +1,40 @@
+# Environment / secrets
+.env
+*.pem
+ZscalerRootCA.pem
+
+# Python
+.venv
+venv/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Data (created at runtime)
+data/chats.db
+data/chats.db-journal
+data/uploads/
+
+# Sandbox workspaces
+/tmp/chatbot_workspaces/
+
+# Logs
+*.log
+audit_log.jsonl
+
+# OS
+.DS_STORE
+Thumbs.db
+
+# IDE
+.streamlit/
+.vscode/
+.idea/
+*.swp
+*.swo
