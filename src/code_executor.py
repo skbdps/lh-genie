@@ -77,14 +77,14 @@ class CodeExecutor:
             (workspace / "output").mkdir(parents=True, exist_ok=True)
             (workspace / "query_results").mkdir(parents=True, exist_ok=True)
 
-            # Copy helper module into workspace so it survives the bind mount
+            # Copy helper module into workspace — always overwrite to stay in sync with repo
             lib_dir = workspace / "lib"
             lib_dir.mkdir(parents=True, exist_ok=True)
             bundled_utils = Path(__file__).parent.parent / "sandbox_image" / "lib" / "lakehouse_utils.py"
             target_utils = lib_dir / "lakehouse_utils.py"
-            if bundled_utils.exists() and not target_utils.exists():
+            if bundled_utils.exists():
                 shutil.copy2(str(bundled_utils), str(target_utils))
-                print(f"[DOCKER] Copied lakehouse_utils.py → {target_utils}")
+                print(f"[DOCKER] Synced lakehouse_utils.py → {target_utils}")
 
             # Also create __init__.py so 'from lib.lakehouse_utils import ...' works
             init_file = lib_dir / "__init__.py"
