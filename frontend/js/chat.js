@@ -65,8 +65,21 @@ const Chat = {
 
         // Start assistant message container
         const assistantDiv = this._startAssistantMessage();
-        const toolsContainer = assistantDiv.querySelector('.assistant-tools');
         const textContainer = assistantDiv.querySelector('.assistant-text');
+
+        // Execution steps container (collapsible) — created lazily on first tool call
+        let stepsContainer = null;
+        let stepsBody = null;
+        let stepCount = 0;
+
+        function ensureSteps() {
+            if (!stepsContainer) {
+                stepsContainer = Render.createExecutionSteps();
+                stepsBody = stepsContainer.querySelector('.execution-steps-body');
+                // Insert before text container
+                assistantDiv.insertBefore(stepsContainer, textContainer);
+            }
+        }
 
         // Show typing indicator
         messagesEl.appendChild(Render.createTypingIndicator());
@@ -87,9 +100,12 @@ const Chat = {
 
                 tool_start: (data) => {
                     Render.updateTypingLabel(`Running ${data.tool}…`);
+                    ensureSteps();
+                    stepCount++;
+                    Render.updateStepCount(stepsContainer, stepCount);
                     const card = Render.createToolCard(data);
                     toolCards[data.iteration] = card;
-                    toolsContainer.appendChild(card);
+                    stepsBody.appendChild(card);
                     this._scrollToBottom();
                 },
 
@@ -102,23 +118,24 @@ const Chat = {
                 },
 
                 html_output: (data) => {
+                    // Charts render OUTSIDE the collapsible steps — always visible
                     const output = Render.createHtmlOutput(data);
-                    toolsContainer.appendChild(output);
+                    assistantDiv.insertBefore(output, textContainer);
                     this._scrollToBottom();
                 },
 
                 text: (data) => {
                     Render.removeTyping();
                     const html = this._renderMarkdown(data.text);
-                    // Append to existing text (model may emit multiple text events)
                     textContainer.innerHTML += html;
                     this._scrollToBottom();
                 },
 
                 thinking: (data) => {
                     if (data.text) {
+                        ensureSteps();
                         const block = Render.createThinkingBlock(data.text);
-                        toolsContainer.appendChild(block);
+                        stepsBody.appendChild(block);
                     }
                 },
 
@@ -131,8 +148,6 @@ const Chat = {
                 done: (data) => {
                     Render.removeTyping();
                     this._scrollToBottom();
-
-                    // Refresh sidebar to pick up auto-title
                     Sidebar.refresh();
                 },
             });
@@ -161,28 +176,44 @@ const Chat = {
         // Assistant message — may contain text + tool_result_display blocks
         if (role === 'assistant') {
             const div = this._startAssistantMessage();
-            const toolsContainer = div.querySelector('.assistant-tools');
             const textContainer = div.querySelector('.assistant-text');
 
             if (Array.isArray(content)) {
+                // Collect tool blocks to wrap in collapsible steps
+                const toolBlocks = content.filter(b =>
+                    b.type === 'tool_result_display' || b.type === 'thinking'
+                );
+
+                if (toolBlocks.length > 0) {
+                    const stepsContainer = Render.createExecutionSteps();
+                    const stepsBody = stepsContainer.querySelector('.execution-steps-body');
+                    Render.updateStepCount(stepsContainer, toolBlocks.length);
+                    div.insertBefore(stepsContainer, textContainer);
+
+                    for (const block of toolBlocks) {
+                        if (block.type === 'tool_result_display') {
+                            const card = Render.createToolCard({
+                                tool: block.tool_name,
+                                input: block.tool_input || {},
+                                iteration: block.iteration || 0,
+                            });
+                            Render.updateToolCard(card, {
+                                success: block.result?.success ?? true,
+                                output: block.result?.output || '',
+                                error: block.result?.error || null,
+                            });
+                            stepsBody.appendChild(card);
+                        } else if (block.type === 'thinking') {
+                            const tb = Render.createThinkingBlock(block.thinking || '');
+                            stepsBody.appendChild(tb);
+                        }
+                    }
+                }
+
+                // Text blocks go outside steps — always visible
                 for (const block of content) {
                     if (block.type === 'text' && block.text) {
                         textContainer.innerHTML += this._renderMarkdown(block.text);
-                    } else if (block.type === 'tool_result_display') {
-                        const card = Render.createToolCard({
-                            tool: block.tool_name,
-                            input: block.tool_input || {},
-                            iteration: block.iteration || 0,
-                        });
-                        Render.updateToolCard(card, {
-                            success: block.result?.success ?? true,
-                            output: block.result?.output || '',
-                            error: block.result?.error || null,
-                        });
-                        toolsContainer.appendChild(card);
-                    } else if (block.type === 'thinking') {
-                        const tb = Render.createThinkingBlock(block.thinking || '');
-                        toolsContainer.appendChild(tb);
                     }
                 }
             } else if (typeof content === 'string') {
@@ -208,7 +239,6 @@ const Chat = {
         div.className = 'message assistant';
         div.innerHTML = `
             <div class="message-role">Genie</div>
-            <div class="assistant-tools"></div>
             <div class="assistant-text message-body"></div>
         `;
         messagesEl.appendChild(div);
