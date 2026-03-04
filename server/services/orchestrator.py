@@ -245,11 +245,15 @@ async def run_agent_loop(
         token_count=assistant_tokens,
     )
 
-    # Auto-title on first message
+    # Auto-title on first message (max 8 words)
     if final_text.strip():
         msgs = db.get_messages(chat_id)
         if len(msgs) <= 2:
-            title = final_text.strip()[:80].split("\n")[0]
+            first_line = final_text.strip().split("\n")[0]
+            words = first_line.split()[:8]
+            title = " ".join(words)
+            if len(first_line.split()) > 8:
+                title += "…"
             db.update_chat(chat_id, title=title)
 
     # ── Done event ─────────────────────────────────────────────────────
