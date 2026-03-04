@@ -132,13 +132,22 @@ async def run_agent_loop(
             "iteration": iteration,
         }))
 
-        # Check for HTML outputs after execute_python
-        if tool_name == "execute_python" and result.get("success") and executor:
-            _emit_html_outputs(queue, loop, chat_id, executor, result.get("output", ""))
+        # Check for HTML outputs after tools that may produce them
+        if tool_name in ("execute_python", "execute_bash", "save_files") \
+                and result.get("success") and executor:
+            try:
+                _emit_html_outputs(
+                    queue, loop, chat_id, executor,
+                    result.get("output", ""),
+                    emitted_files,
+                )
+            except Exception as e:
+                print(f"[ORCHESTRATOR] HTML output emission failed: {e}")
 
         return result
 
     tool_exec._counter = 0
+    emitted_files = set()  # Track already-sent HTML files to avoid duplicates
 
     # ── Worker thread: runs the synchronous LLM loop ───────────────────
 
@@ -281,10 +290,12 @@ def _emit_html_outputs(
     chat_id: str,
     executor: CodeExecutor,
     stdout: str,
+    emitted_files: set,
 ):
     """
     After execute_python, check for HTML outputs and emit them as SSE events.
     Parses [OUTPUT_HTML:path] markers from stdout, falls back to scanning output/.
+    Uses emitted_files set to avoid sending the same file twice.
     """
     try:
         workspace = executor.get_workspace(chat_id)
@@ -308,6 +319,10 @@ def _emit_html_outputs(
             html_paths = sorted(output_dir.glob("*.html"), key=lambda f: f.stat().st_mtime)
 
     for html_file in html_paths:
+        # Skip already-emitted files
+        if html_file.name in emitted_files:
+            continue
+
         try:
             html_content = html_file.read_text(encoding="utf-8")
             if not html_content.strip():
@@ -321,5 +336,6 @@ def _emit_html_outputs(
                 "html": html_content,
                 "kind": kind,
             }))
+            emitted_files.add(html_file.name)
         except Exception as e:
             print(f"[ORCHESTRATOR] Failed to read {html_file}: {e}")
