@@ -46,6 +46,7 @@ async def upload_file(
         file_path=file_path,
         file_type=file_type,
         size_bytes=size_bytes,
+        token_estimate=0,
     )
 
     # Upload to sandbox if needed
@@ -65,7 +66,7 @@ async def upload_file(
         file_type=db_file.file_type,
         size_bytes=db_file.size_bytes,
         in_context=db_file.in_context,
-        created_at=db_file.created_at,
+        created_at=db_file.uploaded_at,
     )
 
 
@@ -79,7 +80,7 @@ def list_files(chat_id: str, db=Depends(deps.get_db)):
             file_type=f.file_type,
             size_bytes=f.size_bytes,
             in_context=f.in_context,
-            created_at=f.created_at,
+            created_at=f.uploaded_at,
         )
         for f in files
     ]
