@@ -204,6 +204,7 @@ def display_table(
 
     html = "\n".join(parts)
     Path(output_path).write_text(html, encoding="utf-8")
+    print(f"[OUTPUT_HTML:{output_path}]")
     print(f"Table: {title or '(untitled)'} ({total_rows}×{len(df.columns)}) → {output_path}")
     return output_path
 
@@ -219,10 +220,12 @@ def display_chart(
     kind: str = "bar",
     title: str | None = None,
     color: str | None = None,
+    output_path: str | None = None,
     **plotly_kwargs,
 ):
     """
     Create a plotly Figure with consistent corporate styling.
+    Automatically saves to HTML for inline rendering in the chatbot UI.
 
     Args:
         df:     DataFrame with the data.
@@ -231,6 +234,7 @@ def display_chart(
         kind:   Chart type: bar, barh, line, scatter, pie, histogram, heatmap
         title:  Chart title.
         color:  Optional column for color grouping.
+        output_path: Where to save the HTML. Defaults to /home/user/output/chart.html
         **plotly_kwargs: Extra args passed to the plotly express function.
 
     Returns:
@@ -295,47 +299,38 @@ def display_chart(
         margin=dict(l=60, r=30, t=60, b=60),
     )
 
+    # Auto-save to HTML for inline rendering in the chatbot UI
+    save_path = output_path or f"{_OUTPUT_DIR}/chart.html"
+    save_chart(fig, output_path=save_path)
+
     return fig
 
 
 def save_chart(
     fig,
     output_path: str | None = None,
-    also_png: bool = True,
 ) -> dict:
     """
-    Save a plotly Figure to HTML (interactive) and optionally PNG (static).
+    Save a plotly Figure to an interactive HTML file.
 
     Args:
         fig:         plotly Figure object.
         output_path: Path for the HTML file.
                      Defaults to /home/user/output/chart.html
-        also_png:    Also export a static PNG image.
 
     Returns:
-        {"html": path, "png": path_or_None}
+        {"html": path}
     """
     if output_path is None:
         output_path = f"{_OUTPUT_DIR}/chart.html"
     _ensure_output_dir(output_path)
 
-    # Write interactive HTML
+    # Write interactive HTML (CDN keeps file small)
     fig.write_html(output_path, include_plotlyjs="cdn")
-    print(f"Chart (HTML) → {output_path}")
+    print(f"[OUTPUT_HTML:{output_path}]")
+    print(f"Chart saved → {output_path}")
 
-    result = {"html": output_path, "png": None}
-
-    # Write static PNG
-    if also_png:
-        png_path = output_path.rsplit(".", 1)[0] + ".png"
-        try:
-            fig.write_image(png_path, width=1000, height=600, scale=2)
-            result["png"] = png_path
-            print(f"Chart (PNG)  → {png_path}")
-        except Exception as e:
-            print(f"Warning: PNG export failed ({e}). Install kaleido: pip install kaleido")
-
-    return result
+    return {"html": output_path}
 
 
 # ---------------------------------------------------------------------------
