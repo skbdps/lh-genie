@@ -111,8 +111,8 @@ def download_output(
     executor=Depends(deps.get_executor),
 ):
     """
-    Download a saved output file from the sandbox workspace.
-    Files are in workspace/output/{filename}.
+    Serve a sandbox output file (chart HTML, table HTML, saved files).
+    Searches workspace/output/ first, then workspace root, then recursively.
     """
     if not executor:
         raise HTTPException(status_code=503, detail="Code executor not available")
@@ -124,9 +124,27 @@ def download_output(
 
     try:
         workspace = executor.get_workspace(chat_id)
-        file_path = workspace / "output" / safe_name
-        if not file_path.exists():
-            raise HTTPException(status_code=404, detail="File not found")
+
+        # Search in priority order
+        candidates = [
+            workspace / "output" / safe_name,
+            workspace / safe_name,
+        ]
+
+        file_path = None
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                file_path = candidate
+                break
+
+        # Fallback: recursive search
+        if not file_path:
+            matches = list(workspace.rglob(safe_name))
+            if matches:
+                file_path = matches[0]
+
+        if not file_path:
+            raise HTTPException(status_code=404, detail=f"File not found: {safe_name}")
 
         media_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
         return FileResponse(
