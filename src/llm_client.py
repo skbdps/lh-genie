@@ -194,6 +194,7 @@ The module at /home/user/lib/lakehouse_utils.py provides:
 Chart types: bar, barh, line, scatter, pie, histogram, heatmap
 
 IMPORTANT: Charts and tables are automatically rendered in the chat UI when you use display_chart() or display_table(). You do NOT need to do anything extra to show them — just call the function and the output appears inline.
+If an output file already exists, the helpers auto-rename it (e.g. chart(1).html, table(1).html) so nothing is overwritten.
 For simple tables and charts, use the helpers. For complex/custom visualizations, write raw plotly code and call fig.write_html('/home/user/output/chart.html', include_plotlyjs='cdn') to make it render in the UI."""
 
     # -------------------------------------------------------------------------
