@@ -172,6 +172,32 @@ const Render = {
         if (el) el.remove();
     },
 
+    /**
+     * Create the collapsible execution steps container.
+     * Tool cards go inside this. Charts and text stay outside.
+     */
+    createExecutionSteps() {
+        const container = document.createElement('div');
+        container.className = 'execution-steps';
+        container.innerHTML = `
+            <button class="execution-steps-toggle" onclick="this.parentElement.classList.toggle('open')">
+                <span class="execution-steps-chevron">▸</span>
+                <span>Execution steps</span>
+                <span class="execution-steps-count">0</span>
+            </button>
+            <div class="execution-steps-body"></div>
+        `;
+        return container;
+    },
+
+    /**
+     * Update the step count badge on the execution steps container.
+     */
+    updateStepCount(stepsContainer, count) {
+        const badge = stepsContainer.querySelector('.execution-steps-count');
+        if (badge) badge.textContent = count;
+    },
+
     // ── Private helpers ──────────────────────────────────────────────
 
     _toolMeta(tool, input) {
