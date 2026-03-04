@@ -34,7 +34,7 @@ const Stream = {
 
         let buffer = '';
         let currentEvent = 'message';
-        let currentData = '';
+        let dataLines = [];
 
         while (true) {
             const { done, value } = await reader.read();
@@ -50,28 +50,31 @@ const Stream = {
                 if (line.startsWith('event:')) {
                     currentEvent = line.slice(6).trim();
                 } else if (line.startsWith('data:')) {
-                    currentData = line.slice(5).trim();
-                } else if (line === '') {
+                    // SSE spec: multi-line data is concatenated with newlines
+                    dataLines.push(line.slice(5).trim());
+                } else if (line === '' || line === '\r') {
                     // Empty line = end of SSE message, dispatch it
-                    if (currentData) {
+                    if (dataLines.length > 0) {
+                        const fullData = dataLines.join('\n');
                         try {
-                            const data = JSON.parse(currentData);
+                            const data = JSON.parse(fullData);
                             const handler = handlers[currentEvent];
                             if (handler) handler(data);
                         } catch (e) {
-                            console.warn('Failed to parse SSE data:', currentData, e);
+                            console.warn('Failed to parse SSE data:', fullData.slice(0, 200), e);
                         }
                     }
                     currentEvent = 'message';
-                    currentData = '';
+                    dataLines = [];
                 }
             }
         }
 
         // Process any remaining data in buffer
-        if (currentData) {
+        if (dataLines.length > 0) {
+            const fullData = dataLines.join('\n');
             try {
-                const data = JSON.parse(currentData);
+                const data = JSON.parse(fullData);
                 const handler = handlers[currentEvent];
                 if (handler) handler(data);
             } catch (e) {
