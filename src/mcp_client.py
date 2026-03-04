@@ -23,22 +23,21 @@ from fastmcp import Client
 class MCPTrinoClient:
     """Synchronous wrapper around the async FastMCP client for Trino MCP tools."""
 
-    def __init__(self, mcp_url: str, default_username: str = "test@hdfcbank.com"):
+    def __init__(self, mcp_url: str, default_username: str | None = None):
         """
         Args:
             mcp_url:          Base URL of the MCP server SSE endpoint
                               (e.g. "http://localhost:8000").
             default_username: User identity for RBAC impersonation.
-                              Hardcoded for dev; replaced by auth layer later.
+                              None = use MCP server's service account (no impersonation).
         """
         # FastMCP Client expects the /sse path for SSE transport
         self.mcp_url = mcp_url.rstrip("/")
         self.sse_url = f"{self.mcp_url}/sse"
         self.default_username = default_username
 
-        # Lazy: we don't connect on init — first call will establish connection
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-        print(f"[MCP-CLIENT] Initialized → {self.mcp_url} (user: {self.default_username})")
+        print(f"[MCP-CLIENT] Initialized → {self.mcp_url} (user: {self.default_username or 'service account'})")
 
     # ------------------------------------------------------------------
     # Internal: run async MCP calls synchronously
@@ -125,7 +124,8 @@ class MCPTrinoClient:
         """
         user = username or self.default_username
         t0 = time.monotonic()
-        raw = self._call_tool("list_schemas", {"username": user})
+        args = {"username": user} if user else {}
+        raw = self._call_tool("list_schemas", args)
         result = self._extract_result(raw)
         elapsed = (time.monotonic() - t0) * 1000
         print(f"[MCP-CLIENT] list_schemas → {result.get('count', '?')} schemas ({elapsed:.0f}ms)")
@@ -140,7 +140,10 @@ class MCPTrinoClient:
         """
         user = username or self.default_username
         t0 = time.monotonic()
-        raw = self._call_tool("list_tables", {"schema": schema, "username": user})
+        args = {"schema": schema}
+        if user:
+            args["username"] = user
+        raw = self._call_tool("list_tables", args)
         result = self._extract_result(raw)
         elapsed = (time.monotonic() - t0) * 1000
         print(f"[MCP-CLIENT] list_tables({schema}) → {result.get('count', '?')} tables ({elapsed:.0f}ms)")
@@ -155,11 +158,10 @@ class MCPTrinoClient:
         """
         user = username or self.default_username
         t0 = time.monotonic()
-        raw = self._call_tool("describe_table", {
-            "schema": schema,
-            "table": table,
-            "username": user,
-        })
+        args = {"schema": schema, "table": table}
+        if user:
+            args["username"] = user
+        raw = self._call_tool("describe_table", args)
         result = self._extract_result(raw)
         elapsed = (time.monotonic() - t0) * 1000
         print(f"[MCP-CLIENT] describe_table({schema}.{table}) → "
@@ -182,11 +184,10 @@ class MCPTrinoClient:
         """
         user = username or self.default_username
         t0 = time.monotonic()
-        raw = self._call_tool("run_query", {
-            "sql": sql,
-            "limit": limit,
-            "username": user,
-        })
+        args = {"sql": sql, "limit": limit}
+        if user:
+            args["username"] = user
+        raw = self._call_tool("run_query", args)
         result = self._extract_result(raw)
         elapsed = (time.monotonic() - t0) * 1000
 
